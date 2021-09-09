@@ -1,0 +1,5 @@
+Joint Rotation Keys:
+
+Y, G, H, J - Shoulder
+R, F - Elbow
+W, A, S, D, Q, E - Wrist
