@@ -1,8 +1,8 @@
-import pygame
 import OpenGL
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
+import glfw
 import pywavefront
 import numpy
 import math
@@ -147,116 +147,118 @@ wrist_z_limits = [-180, 180]
 numpy.set_printoptions(suppress=True)
 
 def main():
-        pygame.init()
-        display = (800, 600)
-        pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
-        pygame.display.set_caption("3-Segment Remote Manipulator")
-        gluPerspective(60, (display[0] / display[1]), 0.05, 500.0)
-        glEnable(GL_CULL_FACE)
+    glfw.init()
+    window = glfw.create_window(800, 600, "RMS Arm", None, None)
+    glfw.set_window_pos(window,100,100)
+    glfw.make_context_current(window)
+    
+    gluPerspective(60, 8/6, 0.05, 500.0)
+    glEnable(GL_CULL_FACE)
+    
+    glTranslate(0, -4, -10)
+
+    global frame_shoulder_rot_x, frame_attachment_rot_y,\
+           frame_elbow_rot_y,\
+           frame_wrist_rot_x, frame_wrist_rot_y, frame_wrist_rot_z,\
+           shoulder_x_total, attachment_y_total,\
+           elbow_y_total,\
+           wrist_x_total, wrist_y_total, wrist_z_total
+
+    while True:
+
+        glfw.poll_events()
+
+        if keyboard.is_pressed("y"):
+            frame_attachment_rot_y = 1
+        if keyboard.is_pressed("h"):
+            frame_attachment_rot_y = -1
+            
+        if keyboard.is_pressed("g"):
+            frame_shoulder_rot_x = 1
+        if keyboard.is_pressed("j"):
+            frame_shoulder_rot_x = -1
+
+        if keyboard.is_pressed("r"):
+            frame_elbow_rot_y = 1
+        if keyboard.is_pressed("f"):
+            frame_elbow_rot_y = -1
+
+        if keyboard.is_pressed("w"):
+            frame_wrist_rot_y = 1
+        if keyboard.is_pressed("s"):
+            frame_wrist_rot_y = -1
+        if keyboard.is_pressed("a"):
+            frame_wrist_rot_x = 1
+        if keyboard.is_pressed("d"):
+            frame_wrist_rot_x = -1
+        if keyboard.is_pressed("q"):
+            frame_wrist_rot_z = 1
+        if keyboard.is_pressed("e"):
+            frame_wrist_rot_z = -1
+
+        attachment_y_total += frame_attachment_rot_y
+
+        shoulder_x_total += frame_shoulder_rot_x
+
+        elbow_y_total += frame_elbow_rot_y
+
+        wrist_x_total += frame_wrist_rot_x
+        wrist_y_total += frame_wrist_rot_y
+        wrist_z_total += frame_wrist_rot_z
+
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+
+        # move, rotate and draw models
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+
+        attachment.rotate(0, frame_attachment_rot_y, 0)
+        attachment.draw()
+
+        # rotate shoulder with attachment on y axis
+        rotator = Quaternion(axis=attachment.get_orient()[1], angle=math.radians(frame_attachment_rot_y))
+        shoulder.set_orient(numpy.array([rotator.rotate(shoulder.orient[0]), rotator.rotate(shoulder.orient[1]), rotator.rotate(shoulder.orient[2])]))
         
-        glTranslate(0, -4, -10)
+        shoulder.rotate(frame_shoulder_rot_x, 0, 0)
+        shoulder.draw()
 
-        global frame_shoulder_rot_x, frame_attachment_rot_y,\
-               frame_elbow_rot_y,\
-               frame_wrist_rot_x, frame_wrist_rot_y, frame_wrist_rot_z,\
-               shoulder_x_total, attachment_y_total,\
-               elbow_y_total,\
-               wrist_x_total, wrist_y_total, wrist_z_total
+        # elbow rotates with both attachment point and shoulder
+        rotator = Quaternion(axis=attachment.get_orient()[1], angle=math.radians(frame_attachment_rot_y))
+        elbow.set_orient(numpy.array([rotator.rotate(elbow.orient[0]), rotator.rotate(elbow.orient[1]), rotator.rotate(elbow.orient[2])]))
+        
+        rotator = Quaternion(axis=shoulder.get_orient()[0], angle=math.radians(frame_shoulder_rot_x))
+        elbow.set_orient(numpy.array([rotator.rotate(elbow.orient[0]), rotator.rotate(elbow.orient[1]), rotator.rotate(elbow.orient[2])]))
 
-        while True:
+        elbow.set_pos(numpy.matmul(numpy.array([0, shoulder_length, 0]), shoulder.get_orient()))
 
-            if keyboard.is_pressed("y"):
-                frame_attachment_rot_y = 1
-            if keyboard.is_pressed("h"):
-                frame_attachment_rot_y = -1
-                
-            if keyboard.is_pressed("g"):
-                frame_shoulder_rot_x = 1
-            if keyboard.is_pressed("j"):
-                frame_shoulder_rot_x = -1
+        elbow.rotate(frame_elbow_rot_y, 0, 0)
+        elbow.draw()
 
-            if keyboard.is_pressed("r"):
-                frame_elbow_rot_y = 1
-            if keyboard.is_pressed("f"):
-                frame_elbow_rot_y = -1
+        # wrist rotates with attachment point, shoulder and elbow
+        rotator = Quaternion(axis=attachment.get_orient()[1], angle=math.radians(frame_attachment_rot_y))
+        wrist.set_orient(numpy.array([rotator.rotate(wrist.orient[0]), rotator.rotate(wrist.orient[1]), rotator.rotate(wrist.orient[2])]))
+        
+        rotator = Quaternion(axis=shoulder.get_orient()[0], angle=math.radians(frame_shoulder_rot_x))
+        wrist.set_orient(numpy.array([rotator.rotate(wrist.orient[0]), rotator.rotate(wrist.orient[1]), rotator.rotate(wrist.orient[2])]))
 
-            if keyboard.is_pressed("w"):
-                frame_wrist_rot_y = 1
-            if keyboard.is_pressed("s"):
-                frame_wrist_rot_y = -1
-            if keyboard.is_pressed("a"):
-                frame_wrist_rot_x = 1
-            if keyboard.is_pressed("d"):
-                frame_wrist_rot_x = -1
-            if keyboard.is_pressed("q"):
-                frame_wrist_rot_z = 1
-            if keyboard.is_pressed("e"):
-                frame_wrist_rot_z = -1
+        rotator = Quaternion(axis=elbow.get_orient()[0], angle=math.radians(frame_elbow_rot_y))
+        wrist.set_orient(numpy.array([rotator.rotate(wrist.orient[0]), rotator.rotate(wrist.orient[1]), rotator.rotate(wrist.orient[2])]))
+        
+        wrist.set_pos(elbow.get_pos() + numpy.matmul(numpy.array([0, elbow_length, 0]), elbow.get_orient()))
 
-            attachment_y_total += frame_attachment_rot_y
+        wrist.rotate(frame_wrist_rot_x, frame_wrist_rot_y, frame_wrist_rot_z)
+        wrist.draw()
 
-            shoulder_x_total += frame_shoulder_rot_x
+        # clear rotation commands
+        frame_attachment_rot_y = 0
 
-            elbow_y_total += frame_elbow_rot_y
+        frame_shoulder_rot_x = 0
 
-            wrist_x_total += frame_wrist_rot_x
-            wrist_y_total += frame_wrist_rot_y
-            wrist_z_total += frame_wrist_rot_z
+        frame_elbow_rot_y = 0
 
-            glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+        frame_wrist_rot_x = 0
+        frame_wrist_rot_y = 0
+        frame_wrist_rot_z = 0
 
-            # move, rotate and draw models
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-
-            attachment.rotate(0, frame_attachment_rot_y, 0)
-            attachment.draw()
-
-            # rotate shoulder with attachment on y axis
-            rotator = Quaternion(axis=attachment.get_orient()[1], angle=math.radians(frame_attachment_rot_y))
-            shoulder.set_orient(numpy.array([rotator.rotate(shoulder.orient[0]), rotator.rotate(shoulder.orient[1]), rotator.rotate(shoulder.orient[2])]))
-            
-            shoulder.rotate(frame_shoulder_rot_x, 0, 0)
-            shoulder.draw()
-
-            # elbow rotates with both attachment point and shoulder
-            rotator = Quaternion(axis=attachment.get_orient()[1], angle=math.radians(frame_attachment_rot_y))
-            elbow.set_orient(numpy.array([rotator.rotate(elbow.orient[0]), rotator.rotate(elbow.orient[1]), rotator.rotate(elbow.orient[2])]))
-            
-            rotator = Quaternion(axis=shoulder.get_orient()[0], angle=math.radians(frame_shoulder_rot_x))
-            elbow.set_orient(numpy.array([rotator.rotate(elbow.orient[0]), rotator.rotate(elbow.orient[1]), rotator.rotate(elbow.orient[2])]))
-
-            elbow.set_pos(numpy.matmul(numpy.array([0, shoulder_length, 0]), shoulder.get_orient()))
-
-            elbow.rotate(frame_elbow_rot_y, 0, 0)
-            elbow.draw()
-
-            # wrist rotates with attachment point, shoulder and elbow
-            rotator = Quaternion(axis=attachment.get_orient()[1], angle=math.radians(frame_attachment_rot_y))
-            wrist.set_orient(numpy.array([rotator.rotate(wrist.orient[0]), rotator.rotate(wrist.orient[1]), rotator.rotate(wrist.orient[2])]))
-            
-            rotator = Quaternion(axis=shoulder.get_orient()[0], angle=math.radians(frame_shoulder_rot_x))
-            wrist.set_orient(numpy.array([rotator.rotate(wrist.orient[0]), rotator.rotate(wrist.orient[1]), rotator.rotate(wrist.orient[2])]))
-
-            rotator = Quaternion(axis=elbow.get_orient()[0], angle=math.radians(frame_elbow_rot_y))
-            wrist.set_orient(numpy.array([rotator.rotate(wrist.orient[0]), rotator.rotate(wrist.orient[1]), rotator.rotate(wrist.orient[2])]))
-            
-            wrist.set_pos(elbow.get_pos() + numpy.matmul(numpy.array([0, elbow_length, 0]), elbow.get_orient()))
-
-            wrist.rotate(frame_wrist_rot_x, frame_wrist_rot_y, frame_wrist_rot_z)
-            wrist.draw()
-
-            # clear rotation commands
-            frame_attachment_rot_y = 0
-
-            frame_shoulder_rot_x = 0
-
-            frame_elbow_rot_y = 0
-
-            frame_wrist_rot_x = 0
-            frame_wrist_rot_y = 0
-            frame_wrist_rot_z = 0
-
-            pygame.display.flip()
-            pygame.time.wait(10)
+        glfw.swap_buffers(window)
 
 main()
