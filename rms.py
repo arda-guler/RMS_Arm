@@ -111,7 +111,7 @@ shoulder_length = 4.2
 
 frame_shoulder_rot_x = 0
 shoulder_x_total = 0
-shoulder_x_limits = [-90, 90] 
+shoulder_x_limits = [-82, 82] 
 
 # ELBOW JOINT (Y rotation)
 elbow_mesh = pywavefront.Wavefront('models/elbow.obj', collect_faces=True)
@@ -123,7 +123,7 @@ elbow_length = 3.7
 
 frame_elbow_rot_y = 0
 elbow_y_total = 0
-elbow_y_limits = [-160, 160]
+elbow_y_limits = [-135, 135]
 
 # WRIST JOINT (X, Y and Z rotation)
 wrist_mesh = pywavefront.Wavefront('models/wrist.obj', collect_faces=True)
@@ -140,13 +140,15 @@ wrist_x_total = 0
 wrist_y_total = 0
 wrist_z_total = 0
 
-wrist_x_limits = [-90, 90]
-wrist_y_limits = [-90, 90]
-wrist_z_limits = [-180, 180]
+wrist_x_limits = [-100, 100]
+wrist_y_limits = [-180, 180]
+wrist_z_limits = [-100, 100]
 
 numpy.set_printoptions(suppress=True)
 
 def main():
+    sim_time = 0
+    
     glfw.init()
     window = glfw.create_window(800, 600, "RMS Arm", None, None)
     glfw.set_window_pos(window,100,100)
@@ -166,34 +168,42 @@ def main():
 
     while True:
 
+        sim_time += 1
+
+        if sim_time % 10 == 0:
+            try:
+                system("cls")
+            except:
+                system("clear")
+
         glfw.poll_events()
 
-        if keyboard.is_pressed("y"):
+        if keyboard.is_pressed("y") and attachment_y_total < max(attachment_y_limits):
             frame_attachment_rot_y = 1
-        if keyboard.is_pressed("h"):
+        if keyboard.is_pressed("h") and attachment_y_total > min(attachment_y_limits):
             frame_attachment_rot_y = -1
             
-        if keyboard.is_pressed("g"):
+        if keyboard.is_pressed("g") and shoulder_x_total < max(shoulder_x_limits):
             frame_shoulder_rot_x = 1
-        if keyboard.is_pressed("j"):
+        if keyboard.is_pressed("j") and shoulder_x_total > min(shoulder_x_limits):
             frame_shoulder_rot_x = -1
 
-        if keyboard.is_pressed("r"):
+        if keyboard.is_pressed("r") and elbow_y_total < max(elbow_y_limits):
             frame_elbow_rot_y = 1
-        if keyboard.is_pressed("f"):
+        if keyboard.is_pressed("f") and elbow_y_total > min(elbow_y_limits):
             frame_elbow_rot_y = -1
 
-        if keyboard.is_pressed("w"):
+        if keyboard.is_pressed("w") and wrist_y_total < max(wrist_y_limits):
             frame_wrist_rot_y = 1
-        if keyboard.is_pressed("s"):
+        if keyboard.is_pressed("s") and wrist_y_total > min(wrist_y_limits):
             frame_wrist_rot_y = -1
-        if keyboard.is_pressed("a"):
+        if keyboard.is_pressed("a") and wrist_x_total < max(wrist_x_limits):
             frame_wrist_rot_x = 1
-        if keyboard.is_pressed("d"):
+        if keyboard.is_pressed("d") and wrist_x_total > min(wrist_x_limits):
             frame_wrist_rot_x = -1
-        if keyboard.is_pressed("q"):
+        if keyboard.is_pressed("q") and wrist_z_total < max(wrist_z_limits):
             frame_wrist_rot_z = 1
-        if keyboard.is_pressed("e"):
+        if keyboard.is_pressed("e") and wrist_z_total > min(wrist_z_limits):
             frame_wrist_rot_z = -1
 
         attachment_y_total += frame_attachment_rot_y
@@ -248,7 +258,58 @@ def main():
         wrist.rotate(frame_wrist_rot_x, frame_wrist_rot_y, frame_wrist_rot_z)
         wrist.draw()
 
-        # clear rotation commands
+        # display useful info
+        if sim_time % 10 == 0:
+            attachment_y_warn = ""
+            shoulder_x_warn = ""
+
+            elbow_y_warn = ""
+
+            wrist_x_warn = ""
+            wrist_y_warn = ""
+            wrist_z_warn = ""
+            
+            for limit in attachment_y_limits:
+                if abs(attachment_y_total - limit) < 1:
+                    attachment_y_warn = "LIMIT!"
+
+            for limit in shoulder_x_limits:
+                if abs(shoulder_x_total - limit) < 1:
+                    shoulder_x_warn = "LIMIT!"
+
+            for limit in elbow_y_limits:
+                if abs(elbow_y_total - limit) < 1:
+                    elbow_y_warn = "LIMIT!"
+
+            for limit in wrist_x_limits:
+                if abs(wrist_x_total - limit) < 1:
+                    wrist_x_warn = "LIMIT!"
+
+            for limit in wrist_y_limits:
+                if abs(wrist_y_total - limit) < 1:
+                    wrist_y_warn = "LIMIT!"
+
+            for limit in wrist_z_limits:
+                if abs(wrist_z_total - limit) < 1:
+                    wrist_z_warn = "LIMIT!"
+            
+            print("JOINT ANGLES\n")
+            
+            print("Shoulder Pitch:", shoulder_x_total, shoulder_x_warn)
+            print("Shoulder Yaw:", attachment_y_total, attachment_y_warn)
+
+            print("Elbow Pitch:", elbow_y_total, elbow_y_warn)
+
+            print("Wrist Pitch:", wrist_x_total, wrist_x_warn)
+            print("Wrist Yaw:", wrist_z_total, wrist_z_warn)
+            print("Wrist Roll:", wrist_y_total, wrist_y_warn)
+
+            end_effector_pos = wrist.get_pos() + numpy.matmul(numpy.array([0, 1, 0]), wrist.get_orient())
+
+            print("\nEND EFFECTOR\n")
+            print("Position:", end_effector_pos)
+
+        # clear rotation commands for next frame
         frame_attachment_rot_y = 0
 
         frame_shoulder_rot_x = 0
